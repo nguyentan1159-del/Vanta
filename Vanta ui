@@ -1,0 +1,1039 @@
+--[[
+    VANTA UI - PREMIUM DARK
+    Custom Elements v2.0
+    UI ONLY | Single File | Roblox Client
+]]
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local Player = Players.LocalPlayer
+if not Player then return end
+
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+local VANTA = {}
+VANTA.__index = VANTA
+
+local Theme = {
+    Background = Color3.fromRGB(10, 12, 18),
+    Surface = Color3.fromRGB(17, 21, 30),
+    Surface2 = Color3.fromRGB(24, 29, 41),
+    Surface3 = Color3.fromRGB(32, 39, 54),
+    Border = Color3.fromRGB(48, 58, 77),
+    Text = Color3.fromRGB(240, 244, 252),
+    Muted = Color3.fromRGB(139, 151, 173),
+    Accent = Color3.fromRGB(83, 145, 255),
+    Purple = Color3.fromRGB(137, 102, 255),
+    Green = Color3.fromRGB(75, 205, 151),
+    Red = Color3.fromRGB(240, 91, 105)
+}
+
+local function New(class, props, parent)
+    local obj = Instance.new(class)
+    for k, v in pairs(props or {}) do
+        obj[k] = v
+    end
+    obj.Parent = parent
+    return obj
+end
+
+local function Corner(obj, radius)
+    New("UICorner", {
+        CornerRadius = UDim.new(0, radius or 9)
+    }, obj)
+end
+
+local function Stroke(obj, color, transparency)
+    return New("UIStroke", {
+        Color = color or Theme.Border,
+        Transparency = transparency or 0,
+        Thickness = 1
+    }, obj)
+end
+
+local function Tween(obj, props, duration)
+    local t = TweenService:Create(
+        obj,
+        TweenInfo.new(duration or 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+        props
+    )
+    t:Play()
+    return t
+end
+
+local function Gradient(obj)
+    New("UIGradient", {
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Theme.Accent),
+            ColorSequenceKeypoint.new(1, Theme.Purple)
+        }),
+        Rotation = 0
+    }, obj)
+end
+
+local function MakeLabel(parent, text, size, position, font, color)
+    return New("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = position,
+        Size = size,
+        Font = font or Enum.Font.GothamMedium,
+        Text = text,
+        TextColor3 = color or Theme.Text,
+        TextSize = 11,
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, parent)
+end
+
+-- Window
+function VANTA.new(config)
+    config = config or {}
+
+    local self = setmetatable({}, VANTA)
+    self.Connections = {}
+    self.Tabs = {}
+    self.Popups = {}
+    self.Destroyed = false
+
+    local old = PlayerGui:FindFirstChild("VANTA_UI")
+    if old then old:Destroy() end
+
+    self.Gui = New("ScreenGui", {
+        Name = "VANTA_UI",
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    }, PlayerGui)
+
+    self.Main = New("Frame", {
+        Name = "Window",
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(640, 480),
+        BackgroundColor3 = Theme.Background,
+        BorderSizePixel = 0,
+        ClipsDescendants = false
+    }, self.Gui)
+    Corner(self.Main, 15)
+    Stroke(self.Main, Theme.Border, 0.15)
+
+    local topLine = New("Frame", {
+        Size = UDim2.new(1, 0, 0, 2),
+        BackgroundColor3 = Theme.Accent,
+        BorderSizePixel = 0
+    }, self.Main)
+    Gradient(topLine)
+
+    -- Header
+    self.Header = New("Frame", {
+        Position = UDim2.fromOffset(0, 2),
+        Size = UDim2.new(1, 0, 0, 58),
+        BackgroundColor3 = Theme.Surface,
+        BorderSizePixel = 0
+    }, self.Main)
+
+    local logo = New("ImageLabel", {
+        Position = UDim2.fromOffset(16, 12),
+        Size = UDim2.fromOffset(34, 34),
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://117714206849307",
+        ScaleType = Enum.ScaleType.Fit
+    }, self.Header)
+
+    MakeLabel(
+        self.Header,
+        config.Title or "VANTA",
+        UDim2.fromOffset(180, 25),
+        UDim2.fromOffset(59, 9),
+        Enum.Font.GothamBold,
+        Theme.Text
+    ).TextSize = 17
+
+    MakeLabel(
+        self.Header,
+        "PREMIUM INTERFACE",
+        UDim2.fromOffset(180, 15),
+        UDim2.fromOffset(60, 32),
+        Enum.Font.Gotham,
+        Theme.Muted
+    ).TextSize = 9
+
+    local close = New("TextButton", {
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -15, 0.5, 0),
+        Size = UDim2.fromOffset(29, 29),
+        BackgroundColor3 = Color3.fromRGB(55, 31, 39),
+        Text = "×",
+        TextColor3 = Theme.Red,
+        TextSize = 19,
+        Font = Enum.Font.GothamBold,
+        AutoButtonColor = false
+    }, self.Header)
+    Corner(close, 8)
+
+    close.Activated:Connect(function()
+        self:Destroy()
+    end)
+
+    -- Top navigation
+    self.Nav = New("Frame", {
+        Position = UDim2.fromOffset(15, 70),
+        Size = UDim2.new(1, -30, 0, 42),
+        BackgroundColor3 = Theme.Surface,
+        BorderSizePixel = 0
+    }, self.Main)
+    Corner(self.Nav, 9)
+    Stroke(self.Nav, Theme.Border, 0.4)
+
+    New("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        Padding = UDim.new(0, 5),
+        VerticalAlignment = Enum.VerticalAlignment.Center,
+        HorizontalAlignment = Enum.HorizontalAlignment.Left
+    }, self.Nav)
+
+    New("UIPadding", {
+        PaddingLeft = UDim.new(0, 5),
+        PaddingRight = UDim.new(0, 5),
+        PaddingTop = UDim.new(0, 5),
+        PaddingBottom = UDim.new(0, 5)
+    }, self.Nav)
+
+    self.Content = New("Frame", {
+        Position = UDim2.fromOffset(15, 124),
+        Size = UDim2.new(1, -30, 1, -140),
+        BackgroundTransparency = 1,
+        ClipsDescendants = false
+    }, self.Main)
+
+    -- Drag
+    local dragging = false
+    local dragStart
+    local startPos
+
+    self.Header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = self.Main.Position
+        end
+    end)
+
+    table.insert(self.Connections, UserInputService.InputChanged:Connect(function(input)
+        if dragging and (
+            input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch
+        ) then
+            local delta = input.Position - dragStart
+            self.Main.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end))
+
+    table.insert(self.Connections, UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end))
+
+    return self
+end
+
+-- Tab
+function VANTA:CreateTab(name)
+    local tab = {}
+    tab.Window = self
+    tab.Elements = {}
+
+    local page = New("ScrollingFrame", {
+        Name = name,
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 3,
+        ScrollBarImageColor3 = Theme.Accent,
+        CanvasSize = UDim2.new(),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        Visible = false
+    }, self.Content)
+
+    New("UIListLayout", {
+        Padding = UDim.new(0, 9),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    }, page)
+
+    local button = New("TextButton", {
+        Size = UDim2.new(1 / 4, -5, 1, 0),
+        BackgroundColor3 = Theme.Surface,
+        Text = name,
+        TextColor3 = Theme.Muted,
+        TextSize = 10,
+        Font = Enum.Font.GothamMedium,
+        AutoButtonColor = false
+    }, self.Nav)
+    Corner(button, 7)
+
+    button.Activated:Connect(function()
+        for _, t in pairs(self.Tabs) do
+            t.Page.Visible = false
+            Tween(t.Button, {
+                BackgroundColor3 = Theme.Surface,
+                TextColor3 = Theme.Muted
+            })
+        end
+
+        page.Visible = true
+        Tween(button, {
+            BackgroundColor3 = Theme.Surface3,
+            TextColor3 = Theme.Text
+        })
+    end)
+
+    tab.Page = page
+    tab.Button = button
+    table.insert(self.Tabs, tab)
+
+    if #self.Tabs == 1 then
+        page.Visible = true
+        button.BackgroundColor3 = Theme.Surface3
+        button.TextColor3 = Theme.Text
+    end
+
+    return tab
+end
+
+-- Element base
+local function MakeRow(tab, title, description, height)
+    local holder = New("Frame", {
+        Size = UDim2.new(1, -5, 0, height or 58),
+        BackgroundColor3 = Theme.Surface,
+        BorderSizePixel = 0
+    }, tab.Page)
+    Corner(holder, 10)
+    Stroke(holder, Theme.Border, 0.45)
+
+    MakeLabel(holder, title, UDim2.new(1, -125, 0, 20),
+        UDim2.fromOffset(13, 8), Enum.Font.GothamSemibold)
+
+    if description then
+        local desc = MakeLabel(holder, description,
+            UDim2.new(1, -125, 0, 16),
+            UDim2.fromOffset(13, 30),
+            Enum.Font.Gotham, Theme.Muted)
+        desc.TextSize = 9
+    end
+
+    return holder
+end
+
+-- Smart popup placement
+function VANTA:OpenPopup(anchor, popup, width, height)
+    for _, existing in ipairs(self.Popups) do
+        if existing ~= popup then
+            existing.Visible = false
+        end
+    end
+
+    if popup.Visible then
+        popup.Visible = false
+        return
+    end
+
+    local camera = workspace.CurrentCamera
+    if not camera then return end
+
+    local viewport = camera.ViewportSize
+    local aPos = anchor.AbsolutePosition
+    local aSize = anchor.AbsoluteSize
+
+    width = width or 180
+    height = math.min(height or 180, viewport.Y - 24)
+
+    popup.Size = UDim2.fromOffset(width, height)
+    popup.Visible = true
+
+    local rightSpace = viewport.X - (aPos.X + aSize.X)
+    local leftSpace = aPos.X
+    local belowSpace = viewport.Y - (aPos.Y + aSize.Y)
+    local aboveSpace = aPos.Y
+
+    local x
+    local y
+
+    if rightSpace >= width + 10 then
+        x = aPos.X + aSize.X + 8
+    elseif leftSpace >= width + 10 then
+        x = aPos.X - width - 8
+    else
+        x = math.clamp(aPos.X + aSize.X - width, 8, viewport.X - width - 8)
+    end
+
+    if belowSpace >= height then
+        y = aPos.Y + aSize.Y
+    elseif aboveSpace >= height then
+        y = aPos.Y - height
+    else
+        y = math.clamp(aPos.Y + aSize.Y / 2 - height / 2, 8, viewport.Y - height - 8)
+    end
+
+    popup.Position = UDim2.fromOffset(x, y)
+    Tween(popup, {BackgroundTransparency = 0}, 0.12)
+    table.insert(self.Popups, popup)
+end
+
+-- 1. SideDrop
+function VANTA:CreateSideDrop(config)
+    config = config or {}
+    local holder = MakeRow(self, config.Title or "Dropdown", config.Description, 58)
+
+    local selected = config.Default or (config.Options and config.Options[1])
+    local trigger = New("TextButton", {
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -12, 0.5, 0),
+        Size = UDim2.fromOffset(120, 32),
+        BackgroundColor3 = Theme.Surface2,
+        Text = tostring(selected or "Select"),
+        TextColor3 = Theme.Text,
+        TextSize = 10,
+        Font = Enum.Font.GothamMedium,
+        AutoButtonColor = false
+    }, holder)
+    Corner(trigger, 8)
+    Stroke(trigger, Theme.Border, 0.2)
+
+    local popup = New("Frame", {
+        Size = UDim2.fromOffset(170, 150),
+        BackgroundColor3 = Theme.Surface2,
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 50
+    }, self.Gui)
+    Corner(popup, 10)
+    Stroke(popup, Theme.Border, 0.1)
+
+    local list = New("ScrollingFrame", {
+        Position = UDim2.fromOffset(5, 5),
+        Size = UDim2.new(1, -10, 1, -10),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 2,
+        CanvasSize = UDim2.new(),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ZIndex = 51
+    }, popup)
+
+    New("UIListLayout", {
+        Padding = UDim.new(0, 4)
+    }, list)
+
+    for _, option in ipairs(config.Options or {}) do
+        local choice = New("TextButton", {
+            Size = UDim2.new(1, -3, 0, 30),
+            BackgroundColor3 = option == selected and Theme.Surface3 or Theme.Surface2,
+            Text = tostring(option),
+            TextColor3 = option == selected and Theme.Accent or Theme.Text,
+            TextSize = 10,
+            Font = Enum.Font.GothamMedium,
+            AutoButtonColor = false,
+            ZIndex = 52
+        }, list)
+        Corner(choice, 7)
+
+        choice.Activated:Connect(function()
+            selected = option
+            trigger.Text = tostring(option)
+            popup.Visible = false
+            if config.Callback then config.Callback(option) end
+        end)
+    end
+
+    table.insert(self.Popups, popup)
+    trigger.Activated:Connect(function()
+        self:OpenPopup(trigger, popup, 170, math.min(150, 30 * #(config.Options or {}) + 10))
+    end)
+
+    return {
+        Get = function() return selected end,
+        Set = function(value)
+            selected = value
+            trigger.Text = tostring(value)
+        end
+    }
+end
+
+-- 2. SmartToggle
+function VANTA:CreateSmartToggle(config)
+    config = config or {}
+    local holder = MakeRow(self, config.Title or "Toggle", config.Description, 58)
+    local state = config.Default == true
+
+    local track = New("TextButton", {
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -13, 0.5, 0),
+        Size = UDim2.fromOffset(45, 24),
+        BackgroundColor3 = state and Theme.Accent or Theme.Surface3,
+        Text = "",
+        AutoButtonColor = false
+    }, holder)
+    Corner(track, 20)
+
+    local knob = New("Frame", {
+        Position = state and UDim2.fromOffset(24, 3) or UDim2.fromOffset(3, 3),
+        Size = UDim2.fromOffset(18, 18),
+        BackgroundColor3 = Theme.Text,
+        BorderSizePixel = 0
+    }, track)
+    Corner(knob, 20)
+
+    local function set(value, silent)
+        state = value == true
+        Tween(track, {
+            BackgroundColor3 = state and Theme.Accent or Theme.Surface3
+        })
+        Tween(knob, {
+            Position = state and UDim2.fromOffset(24, 3) or UDim2.fromOffset(3, 3)
+        })
+        if not silent and config.Callback then
+            config.Callback(state)
+        end
+    end
+
+    track.Activated:Connect(function()
+        set(not state)
+    end)
+
+    return {
+        Get = function() return state end,
+        Set = set
+    }
+end
+
+-- 3. QuickSlider
+function VANTA:CreateQuickSlider(config)
+    config = config or {}
+
+    local min = config.Min or 0
+    local max = config.Max or 100
+    local step = config.Step or 1
+    local value = math.clamp(config.Default or min, min, max)
+
+    local holder = MakeRow(self, config.Title or "Slider", config.Description, 72)
+
+    local valueLabel = MakeLabel(holder, tostring(value),
+        UDim2.fromOffset(65, 20), UDim2.new(1, -78, 0, 8),
+        Enum.Font.GothamBold, Theme.Accent)
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+    local rail = New("Frame", {
+        Position = UDim2.fromOffset(13, 47),
+        Size = UDim2.new(1, -26, 0, 5),
+        BackgroundColor3 = Theme.Surface3,
+        BorderSizePixel = 0
+    }, holder)
+    Corner(rail, 5)
+
+    local alpha = (value - min) / math.max(max - min, 0.0001)
+
+    local fill = New("Frame", {
+        Size = UDim2.new(alpha, 0, 1, 0),
+        BackgroundColor3 = Theme.Accent,
+        BorderSizePixel = 0
+    }, rail)
+    Corner(fill, 5)
+    Gradient(fill)
+
+    local knob = New("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(alpha, 0, 0.5, 0),
+        Size = UDim2.fromOffset(13, 13),
+        BackgroundColor3 = Theme.Text,
+        BorderSizePixel = 0
+    }, rail)
+    Corner(knob, 20)
+
+    local bubble = New("TextLabel", {
+        AnchorPoint = Vector2.new(0.5, 1),
+        Position = UDim2.new(alpha, 0, 0, -7),
+        Size = UDim2.fromOffset(38, 20),
+        BackgroundColor3 = Theme.Surface3,
+        Text = tostring(value),
+        TextColor3 = Theme.Text,
+        TextSize = 9,
+        Font = Enum.Font.GothamBold,
+        Visible = false
+    }, rail)
+    Corner(bubble, 6)
+
+    local dragging = false
+
+    local function setFromX(x, silent)
+        local pct = math.clamp((x - rail.AbsolutePosition.X) / rail.AbsoluteSize.X, 0, 1)
+        local raw = min + (max - min) * pct
+        value = math.clamp(min + math.floor((raw - min) / step + 0.5) * step, min, max)
+
+        pct = (value - min) / math.max(max - min, 0.0001)
+
+        fill.Size = UDim2.new(pct, 0, 1, 0)
+        knob.Position = UDim2.new(pct, 0, 0.5, 0)
+        bubble.Position = UDim2.new(pct, 0, 0, -7)
+        valueLabel.Text = tostring(value)
+        bubble.Text = tostring(value)
+
+        if not silent and config.Callback then
+            config.Callback(value)
+        end
+    end
+
+    local function begin(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            bubble.Visible = true
+            setFromX(input.Position.X)
+        end
+    end
+
+    rail.InputBegan:Connect(begin)
+    knob.InputBegan:Connect(begin)
+
+    table.insert(self.Connections, UserInputService.InputChanged:Connect(function(input)
+        if dragging and (
+            input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch
+        ) then
+            setFromX(input.Position.X)
+        end
+    end))
+
+    table.insert(self.Connections, UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            bubble.Visible = false
+        end
+    end))
+
+    return {
+        Get = function() return value end,
+        Set = function(v)
+            setFromX(rail.AbsolutePosition.X + rail.AbsoluteSize.X *
+                ((math.clamp(v, min, max) - min) / math.max(max - min, 0.0001)), true)
+        end
+    }
+end
+
+-- 4. ActionButton
+function VANTA:CreateActionButton(config)
+    config = config or {}
+    local holder = MakeRow(self, config.Title or "Action", config.Description, 58)
+
+    local button = New("TextButton", {
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -12, 0.5, 0),
+        Size = UDim2.fromOffset(105, 31),
+        BackgroundColor3 = Theme.Accent,
+        Text = config.ButtonText or "EXECUTE",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 9,
+        Font = Enum.Font.GothamBold,
+        AutoButtonColor = false
+    }, holder)
+    Corner(button, 8)
+    Gradient(button)
+
+    local busy = false
+
+    button.Activated:Connect(function()
+        if busy then return end
+        busy = true
+
+        button.Text = "RUNNING..."
+        button.BackgroundColor3 = Theme.Purple
+
+        local ok, err = pcall(function()
+            if config.Callback then
+                config.Callback()
+            end
+        end)
+
+        if ok then
+            button.Text = "SUCCESS"
+            button.BackgroundColor3 = Theme.Green
+        else
+            button.Text = "ERROR"
+            button.BackgroundColor3 = Theme.Red
+            warn("[VANTA ActionButton]", err)
+        end
+
+        task.wait(config.Cooldown or 0.7)
+
+        if button.Parent then
+            button.Text = config.ButtonText or "EXECUTE"
+            button.BackgroundColor3 = Theme.Accent
+        end
+
+        busy = false
+    end)
+
+    return button
+end
+
+-- 5. MultiSelect
+function VANTA:CreateMultiSelect(config)
+    config = config or {}
+    local holder = MakeRow(self, config.Title or "Multi Select", config.Description, 58)
+
+    local selected = {}
+    local trigger = New("TextButton", {
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -12, 0.5, 0),
+        Size = UDim2.fromOffset(120, 32),
+        BackgroundColor3 = Theme.Surface2,
+        Text = "Choose items",
+        TextColor3 = Theme.Text,
+        TextSize = 9,
+        Font = Enum.Font.GothamMedium,
+        AutoButtonColor = false
+    }, holder)
+    Corner(trigger, 8)
+    Stroke(trigger, Theme.Border, 0.2)
+
+    local popup = New("Frame", {
+        Size = UDim2.fromOffset(205, 235),
+        BackgroundColor3 = Theme.Surface2,
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 60
+    }, self.Gui)
+    Corner(popup, 10)
+    Stroke(popup, Theme.Border, 0.1)
+
+    local search = New("TextBox", {
+        Position = UDim2.fromOffset(8, 8),
+        Size = UDim2.new(1, -16, 0, 29),
+        BackgroundColor3 = Theme.Surface3,
+        Text = "",
+        PlaceholderText = "Search...",
+        PlaceholderColor3 = Theme.Muted,
+        TextColor3 = Theme.Text,
+        TextSize = 10,
+        Font = Enum.Font.Gotham,
+        ClearTextOnFocus = false,
+        ZIndex = 61
+    }, popup)
+    Corner(search, 7)
+
+    local list = New("ScrollingFrame", {
+        Position = UDim2.fromOffset(8, 44),
+        Size = UDim2.new(1, -16, 1, -84),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 2,
+        CanvasSize = UDim2.new(),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ZIndex = 61
+    }, popup)
+
+    New("UIListLayout", {
+        Padding = UDim.new(0, 3)
+    }, list)
+
+    local itemButtons = {}
+
+    local function updateText()
+        local count = 0
+        for _ in pairs(selected) do count += 1 end
+        trigger.Text = count == 0 and "Choose items" or (count .. " selected")
+    end
+
+    for _, option in ipairs(config.Options or {}) do
+        local item = New("TextButton", {
+            Size = UDim2.new(1, -3, 0, 29),
+            BackgroundColor3 = Theme.Surface2,
+            Text = "",
+            AutoButtonColor = false,
+            ZIndex = 62
+        }, list)
+        Corner(item, 6)
+
+        local box = New("Frame", {
+            Position = UDim2.fromOffset(8, 7),
+            Size = UDim2.fromOffset(15, 15),
+            BackgroundColor3 = Theme.Surface3,
+            BorderSizePixel = 0,
+            ZIndex = 63
+        }, item)
+        Corner(box, 4)
+
+        local check = MakeLabel(item, "✓",
+            UDim2.fromScale(1, 1), UDim2.new(),
+            Enum.Font.GothamBold, Theme.Text)
+        check.TextSize = 10
+        check.TextXAlignment = Enum.TextXAlignment.Center
+        check.ZIndex = 64
+        check.Visible = false
+
+        local text = MakeLabel(item, tostring(option),
+            UDim2.new(1, -36, 1, 0),
+            UDim2.fromOffset(31, 0),
+            Enum.Font.Gotham, Theme.Text)
+        text.TextSize = 9
+        text.ZIndex = 63
+
+        item.Activated:Connect(function()
+            selected[option] = not selected[option] and true or nil
+            check.Visible = selected[option] == true
+            box.BackgroundColor3 = selected[option] and Theme.Accent or Theme.Surface3
+            updateText()
+        end)
+
+        itemButtons[#itemButtons + 1] = {
+            Frame = item,
+            Name = tostring(option)
+        }
+    end
+
+    search:GetPropertyChangedSignal("Text"):Connect(function()
+        local query = string.lower(search.Text)
+        for _, item in ipairs(itemButtons) do
+            item.Frame.Visible = string.find(string.lower(item.Name), query, 1, true) ~= nil
+        end
+    end)
+
+    local apply = New("TextButton", {
+        Position = UDim2.new(0, 8, 1, -32),
+        Size = UDim2.new(0.62, -4, 0, 24),
+        BackgroundColor3 = Theme.Accent,
+        Text = "APPLY",
+        TextColor3 = Theme.Text,
+        TextSize = 9,
+        Font = Enum.Font.GothamBold,
+        AutoButtonColor = false,
+        ZIndex = 63
+    }, popup)
+    Corner(apply, 6)
+
+    local clear = New("TextButton", {
+        Position = UDim2.new(0.62, 4, 1, -32),
+        Size = UDim2.new(0.38, -12, 0, 24),
+        BackgroundColor3 = Theme.Surface3,
+        Text = "CLEAR",
+        TextColor3 = Theme.Muted,
+        TextSize = 9,
+        Font = Enum.Font.GothamBold,
+        AutoButtonColor = false,
+        ZIndex = 63
+    }, popup)
+    Corner(clear, 6)
+
+    apply.Activated:Connect(function()
+        local result = {}
+        for _, option in ipairs(config.Options or {}) do
+            if selected[option] then
+                table.insert(result, option)
+            end
+        end
+        popup.Visible = false
+        if config.Callback then config.Callback(result) end
+    end)
+
+    clear.Activated:Connect(function()
+        table.clear(selected)
+        for _, item in ipairs(itemButtons) do
+            local box = item.Frame:FindFirstChildOfClass("Frame")
+            local check = item.Frame:FindFirstChildOfClass("TextLabel")
+            if box then box.BackgroundColor3 = Theme.Surface3 end
+            if check then check.Visible = false end
+        end
+        updateText()
+    end)
+
+    table.insert(self.Popups, popup)
+
+    trigger.Activated:Connect(function()
+        self:OpenPopup(trigger, popup, 205, 235)
+    end)
+
+    return {
+        Get = function()
+            local result = {}
+            for _, option in ipairs(config.Options or {}) do
+                if selected[option] then
+                    table.insert(result, option)
+                end
+            end
+            return result
+        end,
+        Clear = function()
+            table.clear(selected)
+            updateText()
+        end
+    }
+end
+
+-- 6. Keybind
+function VANTA:CreateKeybind(config)
+    config = config or {}
+    local holder = MakeRow(self, config.Title or "Keybind", config.Description, 58)
+    local key = config.Default or Enum.KeyCode.G
+    local listening = false
+
+    local button = New("TextButton", {
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -12, 0.5, 0),
+        Size = UDim2.fromOffset(105, 31),
+        BackgroundColor3 = Theme.Surface2,
+        Text = key.Name,
+        TextColor3 = Theme.Accent,
+        TextSize = 10,
+        Font = Enum.Font.GothamBold,
+        AutoButtonColor = false
+    }, holder)
+    Corner(button, 8)
+    Stroke(button, Theme.Border, 0.2)
+
+    button.Activated:Connect(function()
+        listening = true
+        button.Text = "PRESS KEY"
+        button.TextColor3 = Theme.Purple
+    end)
+
+    local connection
+    connection = UserInputService.InputBegan:Connect(function(input, processed)
+        if listening then
+            if input.UserInputType == Enum.UserInputType.Keyboard
+            and input.KeyCode ~= Enum.KeyCode.Unknown then
+                key = input.KeyCode
+                listening = false
+                button.Text = key.Name
+                button.TextColor3 = Theme.Accent
+                if config.Changed then config.Changed(key) end
+            end
+            return
+        end
+
+        if not processed and input.UserInputType == Enum.UserInputType.Keyboard
+        and input.KeyCode == key then
+            if config.Callback then config.Callback(key) end
+        end
+    end)
+
+    table.insert(self.Connections, connection)
+
+    return {
+        Get = function() return key end,
+        Set = function(newKey)
+            key = newKey
+            button.Text = key.Name
+        end
+    }
+end
+
+function VANTA:Destroy()
+    if self.Destroyed then return end
+    self.Destroyed = true
+
+    for _, connection in ipairs(self.Connections) do
+        pcall(function() connection:Disconnect() end)
+    end
+
+    for _, popup in ipairs(self.Popups) do
+        if popup then popup:Destroy() end
+    end
+
+    if self.Gui then
+        self.Gui:Destroy()
+    end
+end
+
+--==================================================
+-- DEMO
+--==================================================
+
+local Window = VANTA.new({
+    Title = "VANTA"
+})
+
+local MainTab = Window:CreateTab("Main")
+local OtherTab = Window:CreateTab("Other")
+local SettingsTab = Window:CreateTab("Settings")
+
+MainTab:CreateSideDrop({
+    Title = "Interface Mode",
+    Description = "Popup opens beside the control.",
+    Options = {"Default", "Compact", "Advanced", "Custom"},
+    Default = "Default",
+    Callback = function(value)
+        print("SideDrop:", value)
+    end
+})
+
+MainTab:CreateSmartToggle({
+    Title = "Enable Interface",
+    Description = "Animated state switch.",
+    Default = true,
+    Callback = function(value)
+        print("SmartToggle:", value)
+    end
+})
+
+MainTab:CreateQuickSlider({
+    Title = "Intensity",
+    Description = "Adjust from 0 to 100.",
+    Min = 0,
+    Max = 100,
+    Step = 5,
+    Default = 50,
+    Callback = function(value)
+        print("QuickSlider:", value)
+    end
+})
+
+MainTab:CreateActionButton({
+    Title = "Action Element",
+    Description = "Test loading and success states.",
+    ButtonText = "RUN TEST",
+    Cooldown = 1,
+    Callback = function()
+        print("ActionButton executed.")
+    end
+})
+
+OtherTab:CreateMultiSelect({
+    Title = "Select Modules",
+    Description = "Choose multiple options.",
+    Options = {"Module A", "Module B", "Module C", "Module D"},
+    Callback = function(values)
+        print("MultiSelect:", table.concat(values, ", "))
+    end
+})
+
+OtherTab:CreateKeybind({
+    Title = "Activation Key",
+    Description = "Click the key field to rebind.",
+    Default = Enum.KeyCode.G,
+    Changed = function(key)
+        print("Key changed:", key.Name)
+    end,
+    Callback = function(key)
+        print("Key pressed:", key.Name)
+    end
+})
+
+SettingsTab:CreateActionButton({
+    Title = "Close VANTA",
+    Description = "Destroy the interface.",
+    ButtonText = "CLOSE",
+    Callback = function()
+        Window:Destroy()
+    end
+})
+
+print("[VANTA] Custom Elements loaded.")
